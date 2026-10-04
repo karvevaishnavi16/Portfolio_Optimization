@@ -9,7 +9,7 @@
 using namespace std;
 
 // ============================================================
-// MY PART: Sequential Exhaustive Search
+// Sequential Exhaustive Search
 // Implemented in src/sequential_exhaustive.cpp
 // ============================================================
 
@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
          << " seconds\n";
 
     // ============================================================
-    // MY PART: Sequential Exhaustive Search
+    // Sequential Exhaustive Search
     // ============================================================
 
     runSequentialExhaustive();
