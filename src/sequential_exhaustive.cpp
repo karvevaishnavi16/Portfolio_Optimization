@@ -301,7 +301,7 @@ void sequentialSearch(
 
         // This is a complete feasible allocation
         ++evaluatedPortfolios;
-        if (evaluatedPortfolios % 100000000 == 0)
+        if (evaluatedPortfolios % 100000 == 0)
         {
             cout << "Checked: "
                  << evaluatedPortfolios
