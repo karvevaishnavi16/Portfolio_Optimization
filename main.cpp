@@ -37,7 +37,8 @@ using namespace std;
 
     Usage:
       ./portfolio_optimizer
-      ./portfolio_optimizer 0.016
+      ./portfolio_optimizer 10 4 0.016
+      ./portfolio_optimizer --seq 10 0.016
 
     Rmax is a DAILY portfolio-risk limit.
 */
@@ -241,6 +242,36 @@ void search(
 }
 
 
+Solution sequentialExhaustiveSearch(
+    int N,
+    const vector<double>& expectedReturn,
+    const vector<vector<double>>& covariance,
+    double Rmax,
+    unsigned long long& totalEvaluated
+) {
+    Solution localBest;
+    totalEvaluated = 0;
+
+    vector<int> currentWeights(N, 0);
+
+    search(
+        0,
+        N,
+        20,
+        currentWeights,
+        expectedReturn,
+        covariance,
+        Rmax,
+        0.0,
+        0.0,
+        localBest,
+        totalEvaluated
+    );
+
+    return localBest;
+}
+
+
 Solution parallelExhaustiveSearch(
     int N,
     const vector<double>& expectedReturn,
@@ -349,17 +380,25 @@ int main(int argc, char* argv[]) {
     int N = 20;
     int requestedThreads = 0;
     double Rmax = 0.016;
+    bool sequentialMode = false;
 
-    if (argc >= 2) N = atoi(argv[1]);
-    if (argc >= 3) requestedThreads = atoi(argv[2]);
-    if (argc >= 4) Rmax = atof(argv[3]);
+    if (argc >= 2 && string(argv[1]) == "--seq") {
+        sequentialMode = true;
 
-    if (N < 2 || N > MAX_ASSETS) {
-        cerr << "Error: number of assets must be between 2 and 20.\n";
+        if (argc >= 3) N = atoi(argv[2]);
+        if (argc >= 4) Rmax = atof(argv[3]);
+    } else {
+        if (argc >= 2) N = atoi(argv[1]);
+        if (argc >= 3) requestedThreads = atoi(argv[2]);
+        if (argc >= 4) Rmax = atof(argv[3]);
+    }
+
+    if (N < 5 || N > MAX_ASSETS) {
+        cerr << "Error: number of assets must be between 5 and 20.\n";
         return 1;
     }
 
-    if (requestedThreads > 0) {
+    if (!sequentialMode && requestedThreads > 0) {
         omp_set_num_threads(requestedThreads);
     }
 
@@ -481,7 +520,13 @@ int main(int argc, char* argv[]) {
     cout << "Weight increment: 5%\n";
     cout << "Total allocation: 100%\n";
     cout << "Risk limit (daily): " << Rmax << "\n";
-    cout << "OpenMP threads: " << omp_get_max_threads() << "\n\n";
+    if (sequentialMode) {
+        cout << "Mode: Sequential Exhaustive Search\n";
+        cout << "OpenMP threads: not used\n\n";
+    } else {
+        cout << "Mode: OpenMP Parallel Exhaustive Search\n";
+        cout << "OpenMP threads: " << omp_get_max_threads() << "\n\n";
+    }
 
     /*
         For 20 stocks with each weight in {0,1,2,3,4}
@@ -521,14 +566,27 @@ int main(int argc, char* argv[]) {
 
     const double start = omp_get_wtime();
 
-    Solution result =
-        parallelExhaustiveSearch(
-            N,
-            expectedReturn,
-            covariance,
-            Rmax,
-            evaluatedPortfolios
-        );
+    Solution result;
+
+    if (sequentialMode) {
+        result =
+            sequentialExhaustiveSearch(
+                N,
+                expectedReturn,
+                covariance,
+                Rmax,
+                evaluatedPortfolios
+            );
+    } else {
+        result =
+            parallelExhaustiveSearch(
+                N,
+                expectedReturn,
+                covariance,
+                Rmax,
+                evaluatedPortfolios
+            );
+    }
 
     const double end = omp_get_wtime();
 
@@ -579,9 +637,15 @@ int main(int argc, char* argv[]) {
              << "\n";
     }
 
-    cout << "\nExecution Time: "
-         << end - start
-         << " seconds\n";
+    if (sequentialMode) {
+        cout << "\nSequential Execution Time: "
+             << end - start
+             << " seconds\n";
+    } else {
+        cout << "\nOpenMP Execution Time: "
+             << end - start
+             << " seconds\n";
+    }
 
     return 0;
 }
